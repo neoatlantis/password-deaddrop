@@ -26,7 +26,7 @@ async function fetchExistingPassword(id){
             theirPublicKey, mySecretKey,
         ));
         
-        displayPassword(plaintext);
+        displayRetrievedPassword(plaintext);
     }
 
 
@@ -49,6 +49,7 @@ function fetchNewPassword(){
             "#" + data.id;
         $("#newpassword").val(data.password);
         $("#newurl").val(url);
+        $("#default").show();
     })
     .fail(function(){
         displayError("Server temporary down. Wait a few seconds.");
@@ -56,16 +57,14 @@ function fetchNewPassword(){
 }
 
 
-function displayPassword(svgdata){
+function displayRetrievedPassword(svgdata){
     $(svgdata).appendTo($("#password").empty());
     $("#retrieved").show();
-    $("#default,#error").hide();
 }
 
 function displayError(error){
     $("#error-msg").text(error);
     $("#error").show();
-    $("#retrieved,#default").hide();
 }
 
 
