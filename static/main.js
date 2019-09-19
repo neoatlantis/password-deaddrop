@@ -26,13 +26,16 @@ async function fetchExistingPassword(id){
             theirPublicKey, mySecretKey,
         ));
         
-        $(plaintext).appendTo("body");
+        displayPassword(plaintext);
     }
 
 
     $.get("/api/get/" + id + "/with/" + publickeyHEX)
     .done(function(data){
         decryptBox(data.data, data.publicKey);
+    })
+    .fail(function(){
+        displayError("Cannot find the password. URL might be wrong, or it's expired.");
     });
 
 }
@@ -44,12 +47,32 @@ function fetchNewPassword(){
         const url = 
             window.location.origin + window.location.pathname + 
             "#" + data.id;
-        $("<a>", {"href": url}).text(url).appendTo("body");
+        $("#newpassword").val(data.password);
+        $("#newurl").val(url);
+    })
+    .fail(function(){
+        displayError("Server temporary down. Wait a few seconds.");
     });
 }
 
 
+function displayPassword(svgdata){
+    $(svgdata).appendTo($("#password").empty());
+    $("#retrieved").show();
+    $("#default,#error").hide();
+}
+
+function displayError(error){
+    $("#error-msg").text(error);
+    $("#error").show();
+    $("#retrieved,#default").hide();
+}
+
+
+
 // boot up
+var clipboard = new ClipboardJS("#copy-newurl");
+
 if(/^[0-9a-z]{10}$/.test(window.location.hash.slice(1))){
     fetchExistingPassword(window.location.hash.slice(1));
     window.location.hash = "";

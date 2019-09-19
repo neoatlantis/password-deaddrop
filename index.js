@@ -15,13 +15,13 @@ const config = require("./config.js");
 
 const app = express();
 var passwords = {};
+var ratelimit = config.ratelimit;
 
 
 
 async function newRandomPassword(){
-    const randstr = await randomstr(10+20);
-    const passwordID = randstr.slice(0, 10);
-    const passwordValue = randstr.slice(10);
+    const passwordID = await randomstr.small(10);
+    const passwordValue = await randomstr.big(15);
 
     passwords[passwordID] = {
         password: passwordValue,
@@ -32,6 +32,13 @@ async function newRandomPassword(){
 
 
 app.get("/api/new", async function(req, res){
+    ratelimit -= 1;
+    if(ratelimit <= 0){
+        return res
+            .status(503)
+            .send("Service temporary unavailable. Please wait a while.");
+    }
+
     const pair = await newRandomPassword();
     res.type("json");
     res.status(200).send(pair);
@@ -92,6 +99,11 @@ setInterval(function(){
     }
     dellist.forEach(function(k){ delete passwords[k]; });
 }, 30000);
+
+/* Reset rate limit */
+setInterval(function(){
+    ratelimit = config.ratelimit;
+}, 10000);
 
 
 app.listen(7100);

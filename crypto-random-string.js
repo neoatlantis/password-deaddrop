@@ -13,7 +13,8 @@ for async call on randomBytes.
 
 const crypto = require('crypto');
 
-const alphabet = 'abcdefghkmnopqrstuvwxyz23456789'.split('');
+const alphabet32 = 'abcdefghjkmnopqrstuvwxyz23456789'.split('');
+const alphabet56 = 'abcdefghjkmnopqrstuvwxyz23456789ABCDEFGHJKLMNPQRSTUVWXYZ'.split('');
 
 const generateForCustomCharacters = async (length, characters) => {
     // Generating entropy is faster than complex math operations, so we use the simplest way
@@ -42,7 +43,10 @@ const generateForCustomCharacters = async (length, characters) => {
     return string;
 };
 
-module.exports = async function(length){
-    return await generateForCustomCharacters(length, alphabet);
+module.exports.small = async function(length){
+    return await generateForCustomCharacters(length, alphabet32);
 };
 
+module.exports.big = async function(length){
+    return await generateForCustomCharacters(length, alphabet56);
+};

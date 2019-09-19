@@ -2,14 +2,103 @@
 <head>
 <title>Temporary Password</title>
 <script src="jquery.js"></script>
+<script src="clipboard.min.js"></script>
 <script src="nacl-fast.min.js"></script>
 <script src="nacl-util.min.js"></script>
 <script src="main.js"></script>
+<style>
+#error-msg {
+    border: #FF0000 1px dashed;
+    background: #FFCCCC;
+    padding: 0.5em;
+    font-family: monospace;
+    font-size: 1em;
+    text-align: center;
+    width: 50%;
+}
+#newpassword{
+    border: #00FF00 1px dashed;
+    background: #CCFFCC;
+    padding: 0.5em;
+    font-family: monospace;
+    font-size: 2em;
+    text-align: center;
+    width: 50%;
+    max-width: 20em;
+}
+#copy-newurl{
+    font-family: monospace;
+    text-align: center;
+    font-size: 1em;
+    height: 2em;
+}
+#newurl{
+    font-family: monospace;
+    width: 50%;
+    max-width: 30em;
+    text-align: center;
+    font-size: 1em;
+}
+body {
+    text-align: center;
+    padding-top: 3em;
+}
+#retrieved,#error {
+    display: none;
+}
+svg{
+    width: 90%;
+}
+</style>
 </head>
 <body>
-Get your one-time use password.
-<p>
-You may share this password with link. 
-The link is valid for only once.
+
+<div id="default">
+    Get your one-time use password.
+    <p>
+    <div>
+        <input type="text" readonly="1" id="newpassword" />
+    </div>
+    <p>
+
+    <div style="margin-top: 2em">
+        Link to this password:
+        <p>
+        <div>
+            <input type="text" readonly="1" id="newurl" />
+            <button
+                type="button" id="copy-newurl"
+                data-clipboard-action="copy" data-clipboard-target="#newurl"
+            >Copy</button>
+        </div>
+        <p>
+        Within next 24 hours, the password can be viewed by link once.<br />
+        After the link is used, the password is immediately deleted.<br />
+        It will therefore never be recorded elsewhere.<br />
+        <p>
+        Share this link with friends to give them a password.<br />
+        When they get it, no one else will do. <br />
+        If not, you can always refresh the page and try again.<br />
+
+    </div>
+</div>
+
+<div id="retrieved">
+    This is your password:
+    <p>
+    <div id="password"></div>
+    <p>
+    Please write it down or make a screenshot.<br />
+    It is displayed only at this time. No more.
+</div>
+
+<div id="error">
+    <div>An error occured:</div>
+    <p>
+    <div><span id="error-msg"></span></div>
+    <p>
+    <div>Refresh the page to see if problem resolved.</div>
+</div>
+
 </body>
 </html>
