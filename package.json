@@ -1,5 +1,5 @@
 {
-  "name": "tempwd",
+  "name": "password-deaddrop",
   "version": "0.0.1",
   "description": "A temporary password server.",
   "main": "index.js",
