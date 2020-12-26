@@ -1,11 +1,11 @@
 <html>
 <head>
-<title>Password Deaddrop</title>
+<title>Deaddrop</title>
 <script src="jquery.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
 <script src="clipboard.min.js"></script>
 <script src="nacl-fast.min.js"></script>
 <script src="nacl-util.min.js"></script>
-<script src="main.js"></script>
 <style>
 #error-msg {
     border: #FF0000 1px dashed;
@@ -16,15 +16,14 @@
     text-align: center;
     width: 50%;
 }
-#newpassword{
+#newmessage{
     border: #00FF00 1px dashed;
     background: #CCFFCC;
     padding: 0.5em;
     font-family: monospace;
-    font-size: 2em;
-    text-align: center;
-    width: 50%;
-    max-width: 20em;
+    font-size: 1.5em;
+    width: 60%;
+    height: 10em;
 }
 #copy-newurl{
     font-family: monospace;
@@ -43,47 +42,118 @@ body {
     text-align: center;
     padding-top: 3em;
 }
-#retrieved,#error,#default {
-    display: none;
+.challenge input {
+    border: #00FF00 1px dashed;
+    background: #CCFFCC;
+    padding: 0.5em;
+    margin-top: 0.5em;
+    font-family: monospace;
+    font-size: 1.5em;
+    width: 60%;
 }
-svg{
-    width: 90%;
+.challenge input:invalid {
+    border: #FF0000 1px solid;
+    background: #FF9999;
 }
+
+
+.created input,.retrieve input {
+    border: #0000FF 1px dashed;
+    background: #CCCCFF;
+    padding: 0.5em;
+    margin-top: 0.5em;
+    font-family: monospace;
+    font-size: 1.5em;
+    text-align: center;
+    width: 60%;
+}
+
 </style>
 </head>
-<body>
+<body><div id="app"><div v-if="!error">
+    <div v-if="display=='default'">
 
-<div id="default">
-    Get your one-time use password.
-    <p>
-    <div>
-        <input type="text" readonly="1" id="newpassword" />
-    </div>
-    <p>
-
-    <div style="margin-top: 2em">
-        Link to this password:
+        Leave a short but secret message.
         <p>
         <div>
-            <input type="text" readonly="1" id="newurl" />
-            <button
-                type="button" id="copy-newurl"
-                data-clipboard-action="copy" data-clipboard-target="#newurl"
-            >Copy</button>
+            <textarea v-model="message" id="newmessage" placeholder="Here goes the message..."></textarea>
         </div>
         <p>
-        Within next 24 hours, the password can be viewed by above link <span style="color: red">exactly once</span>.<br />
-        After that, this password is immediately deleted.<br />
-        It will therefore never be recorded elsewhere.<br />
-        <p>
-        Share this link with friends to establish a common secret with them.<br />
-        When they get it, they will also be the only ones knowing.<br />
-        If not, you can always refresh the page and try again.<br />
+        <div class="challenge">
+            To ensure your message is read by someone intended, you may ask a short question:
+            <div><input v-model="challenge_question" placeholder="An unambiguous question (optional)" /></div>
+            <div><input v-model="challenge_answer" placeholder="Answer (A-Z and 0-9, case insensitive)" pattern="[0-9a-zA-Z]+" /></div>
+            <br />
+            Your intended receipent must be able to provide the same answer above.
+        </div>
+
+        <div style="margin-top: 2em">
+            After creation, you will receive a URL and secret. Provide them to your receipent.<br />
+            Your message is protected with this secret and stored securely at server for 24 hrs.<br />
+            The message may be read for only once.<br />
+            It's also deleted when retrieval were unsuccessful due to wrong secret or failed challenge.
+        </div>
+
+        <div style="margin-top: 2em">
+            <button v-on:click="create" v-bind:disabled="!allow_create">Create the deaddrop!</button>
+        </div>
 
     </div>
-</div>
 
-<div id="retrieved">
+
+
+
+    <div v-if="display=='created'" class="created">
+        Your deaddrop has been created!
+        <div style="margin-top: 2em">
+            Use this URL to view the deaddrop.
+            <div><input v-model="created_url" readonly/></div>
+        </div>
+
+        <div style="margin-top: 2em">
+            To reveal the deaddrop, tell your receipent use the password below.
+            <div><input v-model="created_secret" readonly/></div>
+        </div>
+        <p>
+        Please write it down or make a screenshot.<br />
+        It is displayed only at this time. No more.
+    </div>
+
+
+
+
+    <div v-if="display=='retrieve'" class="retrieve">
+        <div style="margin-top: 2em">
+            <textarea v-model="retrieve_message"></textarea>
+            <div>
+                To reveal the deaddrop, enter the password:
+                <div><input v-model="retrieve_secret" type="password" v-bind:readonly="!!retrieve_challenge_question && 'message'==retrieve_stat"/></div>
+            </div>
+            <div v-if="'message'==retrieve_stat && !!retrieve_challenge_question">
+                Please also answer the challenge question.
+                <div><input v-model="retrieve_challenge_question" readonly/></div>
+                <div><input v-model="retrieve_challenge_answer"/></div>
+            </div>
+            <div><button v-on:click="retrieve">Continue</button></div>
+        </div>
+        
+    </div>
+
+
+
+
+
+
+
+</div><div v-if="error"><!-- Show error -->
+    <div>An error occured:</div>
+    <p>
+    <div><span id="error-msg">{{ error }}</span></div>
+    <p>
+    <div>Refresh the page to see if problem resolved.</div>
+</div></div>
+
+<!--<div id="retrieved">
     This is your password:
     <p>
     <div id="password"></div>
@@ -98,7 +168,8 @@ svg{
     <div><span id="error-msg"></span></div>
     <p>
     <div>Refresh the page to see if problem resolved.</div>
-</div>
+</div>-->
 
+<script src="main.js" type="module"></script>
 </body>
 </html>
