@@ -133,7 +133,7 @@ button:disabled{
 
     <div v-if="display=='retrieve'" class="retrieve">
         <div style="margin-top: 2em">
-            <textarea v-if="retrieve_message" v-model="retrieve_message"></textarea>
+            <textarea v-if="retrieve_message" v-model="retrieve_message" readonly></textarea>
             <div v-else>
                 <div>
                     To reveal the deaddrop, enter the password:
