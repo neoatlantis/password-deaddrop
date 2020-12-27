@@ -28,12 +28,12 @@ module.exports.store = async function(message_server, challenge_server){
     
     if(challenge_server !== undefined && !L.isString(challenge_server)){
         return { "error": "challenge-invalid" };
-        if(challenge_server.length > config["limit-server"]){
+        if(challenge_server.length > config["limit-length"]){
             return { "error": "challenge-too-long" };
         }
     }
 
-    if(message_server.length > config["limit-server"]){
+    if(message_server.length > config["limit-length"] / 3){
         return { "error": "message-too-long" };
     }
 
@@ -99,11 +99,9 @@ module.exports.retrieve = async function(message_id, decryption_key){
         }
 
         if(message.c_s != null){
-            console.log("Decrypt challenge", decryption_key);
             decryption = decrypt(decryption_key, message.c_s);
             target_name = "challenge";
         } else {
-            console.log("Decrypt message", decryption_key);
             decryption = decrypt(decryption_key, message.m_s);
             target_name = "message";
         }
@@ -115,10 +113,11 @@ module.exports.retrieve = async function(message_id, decryption_key){
         
         if(target_name == "challenge"){
             // modify the message lifetime
+            expire = new Date().getTime() + config["message-life-short"] * 1000;
             await new Promise(function(resolve, reject){
                 memcached.replace(message_id, {
                     m_s: message.m_s,
-                    t: new Date().getTime() + config["message-life-short"] * 1000,
+                    t: expire,
                 }, config["message-life-short"], function(err, data){
                     if(err) return reject(err);
                     resolve(data);
@@ -163,8 +162,10 @@ module.exports.stat = async function(message_id){
                 resolve(data);
             });
         });
+
         return {
             "stat": (message.c_s != null ? "challenge" : "message"),
+            "expire": message.t,
         }
     } catch(e){
         return { "error": "non-exist" };

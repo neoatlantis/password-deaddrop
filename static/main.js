@@ -1,6 +1,39 @@
 import { derive_challenge_keys, derive_message_keys, encrypt, decrypt, random_secret } from "./crypto.js";
 
+String.prototype.toHHMMSS = function () {
+    var sec_num = parseInt(this, 10); // don't forget the second param
+    var hours   = Math.floor(sec_num / 3600);
+    var minutes = Math.floor((sec_num - (hours * 3600)) / 60);
+    var seconds = sec_num - (hours * 3600) - (minutes * 60);
 
+    if (hours   < 10) {hours   = "0"+hours;}
+    if (minutes < 10) {minutes = "0"+minutes;}
+    if (seconds < 10) {seconds = "0"+seconds;}
+    return hours + ' hours ' + minutes + ' minutes ' + seconds + ' seconds';
+}
+
+
+async function ajax(options){
+    let retry = true;
+    while(retry){
+        try{
+            return await new Promise(function(resolve, reject){
+                $.ajax(options)
+                    .done(resolve)
+                    .fail(function(data, textStatus, errorThrown){
+                        retry = (503 != data.status);
+                        reject(data);
+                    })
+                ;
+            });
+        } catch(e){
+            if(!retry) throw e;
+        }
+        await new Promise(function(resolve, reject){
+            setTimeout(resolve, 5000);
+        });
+    }
+}
 
 
 
@@ -9,12 +42,12 @@ const app = new Vue({
     data: {
         display: "default",
 
-        message: "test",
-        challenge_question: "test",
-        challenge_answer: "test",
+        message: "",
+        challenge_question: "",
+        challenge_answer: "",
 
-        created_url: "url",
-        created_secret: "secret",
+        created_url: "",
+        created_secret: "",
 
         retrieve_stat: false,
         retrieve_message_id: "",
@@ -22,6 +55,8 @@ const app = new Vue({
         retrieve_challenge_answer: "",
         retrieve_challenge_question: "",
         retrieve_message: "",
+        retrieve_expire: 0,
+        retrieve_remaining_time: 0,
 
         error: "",
     },
@@ -35,6 +70,16 @@ const app = new Vue({
                     /^[0-9a-z]{1,}$/i.test(this.challenge_answer)
                 )
             );
+        },
+
+        allow_continue: function(){ // in retrieval process
+            return (
+                this.retrieve_secret.trim() != "" &&
+                !(
+                    (this.retrieve_challenge_question.trim() != "") ^
+                    /^[0-9a-z]{1,}$/i.test(this.retrieve_challenge_answer)
+                )
+            );
         }
     },
 
@@ -46,7 +91,7 @@ const app = new Vue({
 });
 
 
-function on_create_deaddrop(){
+async function on_create_deaddrop(){
     const message = this.message.trim();
     const challenge_question = this.challenge_question.trim();
     const challenge_answer = this.challenge_answer.trim().toLowerCase();
@@ -59,25 +104,28 @@ function on_create_deaddrop(){
     const m_c = encrypt(K_ME, message);
     const c_c = encrypt(K_CE, challenge_question);
 
-    console.log("m_c", m_c);
-    console.log("c_c", c_c);
-
     const m_s = encrypt(K_MP, m_c);
-    const c_s = encrypt(K_CP, c_c);
+    const c_s = challenge_answer != "" ? encrypt(K_CP, c_c) : undefined;
 
-    $.ajax({
-        "method": "POST",
-        "url": "/api/new",
-        "contentType": "application/json",
-        "data": JSON.stringify({ m_s, c_s }),
-    }).done(function(data){
+    try{
+        const data = await ajax({
+            "method": "POST",
+            "url": "/api/new",
+            "contentType": "application/json",
+            "data": JSON.stringify({ m_s, c_s }),
+        });
         if(data["message-id"]){
             const message_id = data["message-id"];
             app.created_url = window.location.origin + "/#" + message_id;
             app.created_secret = secret;
             app.display = "created";
         }
-    });
+        if(data["error"]){
+            app.error = data["error"] || "Unknown error.";
+        }
+    } catch(data){
+        app.error = data["error"] || "Unknown error.";
+    }
 
 }
 
@@ -88,13 +136,29 @@ async function on_retrieve_message(){
     const self = this;
     const message_id = this.retrieve_message_id;
 
+    function update_expire(newdata){
+        if(newdata == undefined) return;
+        try{
+            newdata = parseInt(newdata, 10);
+            app.retrieve_expire = newdata;
+        } catch(e){
+        }
+    }
+
     if(this.retrieve_stat === false){
-        const result = await $.ajax({
-            "method": "GET",
-            "url": "/api/stat/" + message_id,
-            "dataType": "json",
-        });
-        this.retrieve_stat = result["stat"];
+        try{
+            const result = await ajax({
+                "method": "GET",
+                "url": "/api/stat/" + message_id,
+                "dataType": "json",
+            });
+            this.retrieve_stat = result["stat"];
+            update_expire(result["expire"]);
+            console.log("STAT done.", this.retrieve_stat);
+        } catch(e){
+            this.error = "This deaddrop does not exist.";
+            window.location.hash = "";
+        }
     }
 
     if(!this.retrieve_secret){
@@ -106,7 +170,7 @@ async function on_retrieve_message(){
 
     let challenge_question = this.retrieve_challenge_question;
     if("challenge" == this.retrieve_stat && !challenge_question){
-        const result = await $.ajax({
+        const result = await ajax({
             "method": "POST",
             "url": "/api/retrieve",
             "dataType": "json",
@@ -121,6 +185,7 @@ async function on_retrieve_message(){
                 decrypt(K_CE, result["data"]));
             this.retrieve_stat = "message"; // next
             this.retrieve_challenge_question = challenge_question;
+            update_expire(result["expire"]);
             return;
         } else {
             // error
@@ -133,7 +198,7 @@ async function on_retrieve_message(){
             this.retrieve_secret,
             this.retrieve_challenge_answer.trim().toLowerCase());
         
-        const result = await $.ajax({
+        const result = await ajax({
             "method": "POST",
             "url": "/api/retrieve",
             "dataType": "json",
@@ -146,6 +211,7 @@ async function on_retrieve_message(){
         if(result["data"] !== undefined){ // server returned message 
             this.retrieve_message = nacl.util.encodeUTF8(
                 decrypt(K_ME, result["data"]));
+            update_expire(result["expire"]);
         } else {
             // error
             this.error = result["error"] || "Unknown error"; 
@@ -155,9 +221,19 @@ async function on_retrieve_message(){
 }
 if(/^[0-9a-z]{5,20}$/.test(window.location.hash.slice(1))){
     app.retrieve_message_id = window.location.hash.slice(1);
-    //window.location.hash = "";
+    window.location.hash = "";
     app.retrieve();
 }
+
+
+function update_retrieve_remaining_time(){
+    if(app.retrieve_expire <= 0) return;
+    app.retrieve_remaining_time = (
+        (app.retrieve_expire - new Date().getTime()) / 1000
+    ).toString().toHHMMSS();
+}
+setInterval(update_retrieve_remaining_time, 500);
+
 
 /*
 $(function(){

@@ -5,7 +5,7 @@ module.exports = {
 
     "memcached": "127.0.0.1:11211",
 
-    "limit-length": 512,
+    "limit-length": 4096,
     "message-life-long": 86400,
     "message-life-short": 300,
 }
